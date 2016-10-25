@@ -5,6 +5,15 @@ import sys, os, re, requests
 import urllib.parse
 import urllib.request
 from bs4 import BeautifulSoup as bs
+from imgurpython import ImgurClient
+
+
+#register a client here https://api.imgur.com/oauth2/addclient
+client_id = "Your Client ID"
+client_secret = "Your Client Secret"
+
+client = ImgurClient(client_id, client_secret)
+
 
 #OPTION NUMBERS
 NUM_OPTIONS = 3
@@ -33,9 +42,9 @@ def menu():
                    "A download of all images on the given link",
                    "Single image download"]
     choice = 0
-    
+
     print("This tool allows for {} types of downloads".format(NUM_OPTIONS))
-    
+
     for i in range(NUM_OPTIONS):
         print(i+1,": ",descriptors[i])
 
@@ -65,29 +74,42 @@ def download_image(url, out_folder):
 
 #pick a diff way to name files. resource exhaustive without being helpful
 def download_page(url, out_folder, domain):
-    page = urllib.request.urlopen(url)
-    soup = bs(page,"lxml")
+    if (domain == "imgur"):
+        album_id = url.split("/")[-1]
+        items = client.get_album_images(album_id)
+        for item in range(len(items)):
+            #print(item.link)
+            image_url = urllib.parse.urljoin(url, items[item].link)
+            filename = str(item) + " " + (items[item].link).split("/")[-1]
+            outpath = os.path.join(out_folder, filename)
+            urllib.request.urlretrieve(image_url,outpath)
+    else:
+        page = urllib.request.urlopen(url)
+        soup = bs(page)
 
-    for image in soup.find_all("img"):
-        if(domain in (image["src"])):
-           print ("Image: {}".format(image)) 
-           image_url = urllib.parse.urljoin(url, image["src"])
-           filename = image["src"].split("/")[-1]
-           outpath = os.path.join(out_folder, filename)
-           urllib.request.urlretrieve(image_url,outpath)
+        for image in soup.find_all("img"):
+            if(domain in (image["src"])):
+                print ("Image: {}".format(image))
+                image_url = urllib.parse.urljoin(url, image["src"])
+                filename = image["src"].split("/")[-1]
+                outpath = os.path.join(out_folder, filename)
+                urllib.request.urlretrieve(image_url,outpath)
 
 #this function assumes a form of Title->Link with no newlines in between
 def find_links(url, out_folder, query, domain):
     page = urllib.request.urlopen(url)
-    soup = bs(page, "lxml")
+    soup = bs(page)
     str_soup = str(soup)
     find = re.compile(r"{}.+{}".format(query,"</a>"))
     full_list = find.findall(str_soup)
     link = re.compile(r"{}(\S+){}".format("href=\"", "\""))
-    link_list = []
-    for part in full_list:
-        extracted = link.search(part)
-        download_page(extracted.group()[6:-1],out_folder, domain)
+
+    for part in range(len(full_list)):
+        extracted = link.search(full_list[part])
+        sub_folder = os.path.join(out_folder, str(part))
+        if(not os.path.exists(sub_folder)):
+            os.mkdir(sub_folder)
+        download_page(extracted.group()[6:-1],sub_folder, domain)
 
 #MAIN CODE
 if (len(sys.argv) != 2) and (len(sys.argv) !=3):
@@ -110,7 +132,7 @@ if(not result):
     exit()
 
 domain = (urllib.parse.urlparse(main_url).netloc).split(".")[-2]
-    
+
 out_folder = get_folder()
 
 if choice == SEARCH:
@@ -123,4 +145,3 @@ elif choice == SINGLE:
 
 else:
     print("Unexpected error, please send me a screenshot of your choices")
-
