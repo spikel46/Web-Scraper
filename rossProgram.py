@@ -9,8 +9,8 @@ from imgurpython import ImgurClient
 
 
 #register a client here https://api.imgur.com/oauth2/addclient
-client_id = "Your Client ID"
-client_secret = "Your Client Secret"
+client_id = "ef001fa3eb4c3cb"
+client_secret = "70edcbc2e7f4e4b879c3813d22003affdb7fcd3b"
 
 client = ImgurClient(client_id, client_secret)
 
